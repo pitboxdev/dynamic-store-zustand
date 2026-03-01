@@ -1,15 +1,44 @@
+<div align="center">
+
 # @pitboxdev/dynamic-store-zustand
 
 > Two complementary approaches to scalable, type-safe state management in React — both built on top of [Zustand](https://github.com/pmndrs/zustand).
 
-[![npm version](https://img.shields.io/npm/v/@pitboxdev/dynamic-store-zustand.svg)](https://www.npmjs.com/package/@pitboxdev/dynamic-store-zustand)
-[![license](https://img.shields.io/npm/l/@pitboxdev/dynamic-store-zustand.svg)](./LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
+<p align="center">
+  <a href="https://www.npmjs.com/package/@pitboxdev/dynamic-store-zustand">
+    <img src="https://img.shields.io/npm/v/@pitboxdev/dynamic-store-zustand?style=flat-square" alt="NPM Version" />
+  </a>
+  <a href="https://www.npmjs.com/package/@pitboxdev/dynamic-store-zustand">
+    <img src="https://img.shields.io/npm/dw/@pitboxdev/dynamic-store-zustand?style=flat-square" alt="NPM Downloads" />
+  </a>
+  <a href="https://bundlephobia.com/package/@pitboxdev/dynamic-store-zustand">
+    <img src="https://img.shields.io/bundlephobia/minzip/@pitboxdev/dynamic-store-zustand?style=flat-square&label=minzipped" alt="Bundle Size" />
+  </a>
+  <a href="https://www.typescriptlang.org/">
+    <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript Strict" />
+  </a>
+  <a href="https://www.npmjs.com/package/@pitboxdev/dynamic-store-zustand">
+    <img src="https://img.shields.io/npm/l/@pitboxdev/dynamic-store-zustand?style=flat-square" alt="License MIT" />
+  </a>
+</p>
+
+</div>
+
+---
+
+## Features
+
+- ✨ **Zero Boilerplate:** No more complex setups or switch-statements.
+- 🧹 **Auto-Cleanup:** Built-in hooks for automatic store resets on unmount.
+- 🔄 **Functional Updaters:** Handles race conditions naturally with `setData(prev => ...)`.
+- 🛡️ **Fully Typed:** Inferred TypeScript definitions out of the box with strict mode support.
+- 🪶 **Tiny Footprint:** Minimal addition to your bundle size.
 
 ---
 
 ## Table of Contents
 
+- [Features](#features)
 - [Overview](#overview)
 - [Installation](#installation)
 - [API 1 — `createDynamicStore`](#api-1--createdynamicstore)
@@ -25,6 +54,7 @@
   - [TypeScript](#typescript-1)
 - [When to use which API](#when-to-use-which-api)
 - [Full API Reference](#full-api-reference)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
@@ -474,6 +504,12 @@ Same signature as `useDynamicStore`. Calls `reset()` on component unmount when `
 | `SetStateAction<T>` | `Partial<T> \| ((prev: T) => Partial<T>)` — setter argument type |
 | `DynamicStoreRegistry` | Internal registry entry (advanced use) |
 | `UseDynamicStoreReturn<T>` | Return type of `useDynamicStore` |
+
+---
+
+## Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/pitboxdev/dynamic-store-zustand/issues).
 
 ---
 
