@@ -96,13 +96,14 @@ const useDynamicStoresManager = create<DynamicStoresState>()(
 export interface UseDynamicStoreMethodsReturn<T extends StoreState> {
   setData: (updater: SetStateAction<T>) => void;
   reset: () => void;
-  get: () => T;
+  getData: () => T;
 }
 
 export interface UseDynamicStoreReturn<T extends StoreState> {
   data: T;
   setData: (updater: SetStateAction<T>) => void;
   reset: () => void;
+  getData: () => T;
 }
 
 // ─── useDynamicStoreMethods ───────────────────────────────────────────────────
@@ -119,14 +120,14 @@ export function useDynamicStoreMethods<T extends StoreState>(
   const setStoreData = useDynamicStoresManager((state) => state.setStoreData);
   const resetStore = useDynamicStoresManager((state) => state.resetStore);
 
-  const get = (): T => {
+  const getData = (): T => {
     const storeRegistry = useDynamicStoresManager.getState().stores[storeId];
     return (storeRegistry?.data ?? config?.initialState ?? {}) as T;
   };
 
   const setData = (updater: SetStateAction<T>): void => {
     if (typeof updater === "function") {
-      const updates = updater(get());
+      const updates = updater(getData());
       setStoreData(
         storeId,
         updates as StoreState,
@@ -145,7 +146,7 @@ export function useDynamicStoreMethods<T extends StoreState>(
     resetStore(storeId);
   };
 
-  return { setData, reset, get };
+  return { setData, reset, getData };
 }
 
 // ─── useDynamicStore ──────────────────────────────────────────────────────────
@@ -190,41 +191,24 @@ export function useDynamicStore<T extends StoreState>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId]);
 
-  const data = (storeRegistry?.data ?? config?.initialState ?? {}) as T;
-
-  return { data, setData: methods.setData, reset: methods.reset };
-}
-
-// ─── useDynamicStoreWithCleanup ───────────────────────────────────────────────
-
-/**
- * Same as `useDynamicStore` but automatically resets state when the
- * component unmounts (when `config.resetOnUnmount` is `true`).
- *
- * @example
- * ```tsx
- * const { data, setData, reset } = useDynamicStoreWithCleanup<FormState>(
- *   'editForm',
- *   { initialState, resetOnUnmount: true },
- * );
- * ```
- */
-export function useDynamicStoreWithCleanup<T extends StoreState>(
-  storeId: string,
-  config?: StoreConfig<T>,
-): UseDynamicStoreReturn<T> {
-  const { data, setData, reset } = useDynamicStore<T>(storeId, config);
-
+  // Handle auto-cleanup on unmount if requested
   useEffect(() => {
     return () => {
       if (config?.resetOnUnmount === true) {
-        reset();
+        methods.reset();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId, config?.resetOnUnmount]);
 
-  return { data, setData, reset };
+  const data = (storeRegistry?.data ?? config?.initialState ?? {}) as T;
+
+  return {
+    data,
+    setData: methods.setData,
+    reset: methods.reset,
+    getData: methods.getData,
+  };
 }
 
 // ─── Imperative helpers (outside React) ──────────────────────────────────────

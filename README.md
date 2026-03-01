@@ -29,7 +29,7 @@
 ## ⚡ Features
 
 - 🛠️ **DX First (Zero Boilerplate):** Extremely simple API without boilerplate, keeping the standard React `useState` ergonomics.
-- 🧹 **Auto-Cleanup:** Built-in hooks for automatic store resets on unmount.
+- 🧹 **Auto-Cleanup:** Built-in config flag `resetOnUnmount` for automatic store resets on unmount.
 - ⚡ **High Performance:** Subscription-free hooks available (`useDynamicStoreMethods`) to read and update state without component re-renders.
 - 🔄 **Functional Updaters:** Handles race conditions naturally with `setData(prev => ...)`.
 - 🛡️ **100% Type-safe:** Written in TypeScript with pristine type inference and autocomplete out of the box.
@@ -57,7 +57,6 @@ Whether you need to generate stores dynamically on the fly or just want the simp
   - [Quick Start](#quick-start)
   - [Functional updater (`setData`)](#functional-updater-setdata)
   - [Examples](#examples)
-- [`useDynamicStoreWithCleanup`](#usedynamicstorewithcleanup)
 - [`useDynamicStoreMethods` (No Subscription)](#usedynamicstoremethods-no-subscription)
 - [Imperative helpers (outside React)](#imperative-helpers-outside-react)
 - [Config options](#config-options)
@@ -76,7 +75,7 @@ Whether you need to generate stores dynamically on the fly or just want the simp
 |---|---|
 | **Dynamic initialization** | Stores are initialized just-in-time when the hook mounts |
 | **useState-like API** | `setData(obj)` or `setData((prev) => update)` |
-| **Auto-cleanup** | `useDynamicStoreWithCleanup` resets state on unmount |
+| **Auto-cleanup** | `resetOnUnmount: true` resets state on unmount |
 | **Navigation reset** | Non-persistent stores reset via imperative API on route changes |
 | **Imperative helpers** | Modify and reset stores outside React components |
 
@@ -113,7 +112,7 @@ interface CounterState {
 const initial: CounterState = { value: 0, step: 1 };
 
 function Counter() {
-  const { data, setData, reset } = useDynamicStore<CounterState>("counter", {
+  const { data, setData, reset, getData } = useDynamicStore<CounterState>("counter", {
     initialState: initial,
   });
 
@@ -239,25 +238,6 @@ function Cart() {
 
 ---
 
-## `useDynamicStoreWithCleanup`
-
-`useDynamicStoreWithCleanup` works identically to `useDynamicStore` but resets the store when the component unmounts — useful for modal dialogs, wizard steps, or edit forms.
-
-```tsx
-import { useDynamicStoreWithCleanup } from "@pitboxdev/dynamic-store-zustand";
-
-function EditModal() {
-  const { data, setData } = useDynamicStoreWithCleanup<FormState>(
-    "editForm",
-    { initialState: { name: "", email: "" }, resetOnUnmount: true }
-  );
-
-  // State is automatically reset when the modal closes
-}
-```
-
----
-
 ## `useDynamicStoreMethods` (No Subscription)
 
 If you need to update or read the store **without subscribing to its changes** (to avoid component re-renders), you can use `useDynamicStoreMethods`:
@@ -267,7 +247,7 @@ import { useDynamicStoreMethods } from "@pitboxdev/dynamic-store-zustand";
 
 function Controls() {
   // This component will NOT re-render when 'counter' state changes!
-  const { setData, reset, get } = useDynamicStoreMethods<CounterState>("counter");
+  const { setData, reset, getData } = useDynamicStoreMethods<CounterState>("counter");
 
   const increment = () => {
     // Both forms work just like in the regular hook:
@@ -275,7 +255,7 @@ function Controls() {
   };
 
   const logCurrent = () => {
-    console.log("Current state:", get()); // Get current state without subscribing
+    console.log("Current state:", getData()); // Get current state without subscribing
   };
 
   return (
@@ -379,19 +359,13 @@ function RegistrationForm() {
 | `storeId` | `string` | Unique key identifying this store in the registry |
 | `config` | `StoreConfig<T>` | Optional config (see [Config options](#config-options)) |
 
-Returns `{ data: T, setData, reset }`.
-
----
-
-### `useDynamicStoreWithCleanup<T>(storeId, config?)`
-
-Same signature as `useDynamicStore`. Calls `reset()` on component unmount when `config.resetOnUnmount` is `true`.
+Returns `{ data: T, setData, reset, getData }`.
 
 ---
 
 ### `useDynamicStoreMethods<T>(storeId, config?)`
 
-Returns `{ setData, reset, get }` bound to the store, without subscribing the component to state changes.
+Returns `{ setData, reset, getData }` bound to the store, without subscribing the component to state changes.
 
 ---
 

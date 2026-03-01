@@ -1,6 +1,5 @@
 export {
   useDynamicStore,
-  useDynamicStoreWithCleanup,
   useDynamicStoreMethods,
   updateDynamicStore,
   getDynamicStoreData,
