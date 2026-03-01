@@ -1,0 +1,62 @@
+{
+  "name": "@pitboxdev/dynamic-store-zustand",
+  "version": "0.0.1",
+  "description": "Dynamic store factory built on top of Zustand for scalable state management",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build",
+    "release": "npm version patch && git push origin main --follow-tags && npm publish"
+  },
+  "keywords": [
+    "zustand",
+    "pitboxdev",
+    "state-management",
+    "react",
+    "typescript"
+  ],
+  "author": "Pitboxdev",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "zustand": ">=5.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "react": "^18.3.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "zustand": "^5.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pitboxdev/dynamic-store-zustand.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pitboxdev/dynamic-store-zustand/issues"
+  },
+  "homepage": "https://github.com/pitboxdev/dynamic-store-zustand#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}
