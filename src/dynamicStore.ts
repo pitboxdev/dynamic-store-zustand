@@ -93,10 +93,59 @@ const useDynamicStoresManager = create<DynamicStoresState>()(
 
 // ─── Return types ─────────────────────────────────────────────────────────────
 
+export interface UseDynamicStoreMethodsReturn<T extends StoreState> {
+  setData: (updater: SetStateAction<T>) => void;
+  reset: () => void;
+  get: () => T;
+}
+
 export interface UseDynamicStoreReturn<T extends StoreState> {
   data: T;
   setData: (updater: SetStateAction<T>) => void;
   reset: () => void;
+}
+
+// ─── useDynamicStoreMethods ───────────────────────────────────────────────────
+
+/**
+ * Hook that returns store methods (setData, reset, get) WITHOUT subscribing
+ * to state changes. Useful when you only need to update or read the store
+ * imperatively without causing component re-renders.
+ */
+export function useDynamicStoreMethods<T extends StoreState>(
+  storeId: string,
+  config?: StoreConfig<T>,
+): UseDynamicStoreMethodsReturn<T> {
+  const setStoreData = useDynamicStoresManager((state) => state.setStoreData);
+  const resetStore = useDynamicStoresManager((state) => state.resetStore);
+
+  const get = (): T => {
+    const storeRegistry = useDynamicStoresManager.getState().stores[storeId];
+    return (storeRegistry?.data ?? config?.initialState ?? {}) as T;
+  };
+
+  const setData = (updater: SetStateAction<T>): void => {
+    if (typeof updater === "function") {
+      const updates = updater(get());
+      setStoreData(
+        storeId,
+        updates as StoreState,
+        config as StoreConfig | undefined,
+      );
+    } else {
+      setStoreData(
+        storeId,
+        updater as StoreState,
+        config as StoreConfig | undefined,
+      );
+    }
+  };
+
+  const reset = (): void => {
+    resetStore(storeId);
+  };
+
+  return { setData, reset, get };
 }
 
 // ─── useDynamicStore ──────────────────────────────────────────────────────────
@@ -125,13 +174,17 @@ export function useDynamicStore<T extends StoreState>(
   storeId: string,
   config?: StoreConfig<T>,
 ): UseDynamicStoreReturn<T> {
-  const storesManager = useDynamicStoresManager();
-  const storeRegistry = storesManager.stores[storeId];
+  const storeRegistry = useDynamicStoresManager((state) => state.stores[storeId]);
+  const methods = useDynamicStoreMethods<T>(storeId, config);
 
   // Initialize the store entry on first use
   useEffect(() => {
     if (!storeRegistry && config?.initialState !== undefined) {
-      storesManager.setStoreData(storeId, {}, config as StoreConfig);
+      useDynamicStoresManager.getState().setStoreData(
+        storeId,
+        {},
+        config as StoreConfig,
+      );
     }
     // Only run on mount / storeId change — intentional dep list
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,31 +192,7 @@ export function useDynamicStore<T extends StoreState>(
 
   const data = (storeRegistry?.data ?? config?.initialState ?? {}) as T;
 
-  const setData = (updater: SetStateAction<T>): void => {
-    if (typeof updater === "function") {
-      const currentData = (
-        storesManager.stores[storeId]?.data ?? config?.initialState ?? {}
-      ) as T;
-      const updates = updater(currentData);
-      storesManager.setStoreData(
-        storeId,
-        updates as StoreState,
-        config as StoreConfig | undefined,
-      );
-    } else {
-      storesManager.setStoreData(
-        storeId,
-        updater as StoreState,
-        config as StoreConfig | undefined,
-      );
-    }
-  };
-
-  const reset = (): void => {
-    storesManager.resetStore(storeId);
-  };
-
-  return { data, setData, reset };
+  return { data, setData: methods.setData, reset: methods.reset };
 }
 
 // ─── useDynamicStoreWithCleanup ───────────────────────────────────────────────
@@ -208,6 +237,16 @@ export const updateDynamicStore = (
   data: StoreState,
 ): void => {
   useDynamicStoresManager.getState().setStoreData(storeId, data);
+};
+
+/**
+ * Retrieve the current state of a dynamic store from outside a React component.
+ * Fallbacks to empty object if store does not exist.
+ */
+export const getDynamicStoreData = <T extends StoreState = StoreState>(
+  storeId: string,
+): T | undefined => {
+  return useDynamicStoresManager.getState().stores[storeId]?.data as T | undefined;
 };
 
 /**

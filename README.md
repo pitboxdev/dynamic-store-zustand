@@ -26,33 +26,42 @@
 
 ---
 
-## Features
+## ⚡ Features
 
-- ✨ **Zero Boilerplate:** No more complex setups or switch-statements.
+- 🛠️ **DX First (Zero Boilerplate):** Extremely simple API without boilerplate, keeping the standard React `useState` ergonomics.
 - 🧹 **Auto-Cleanup:** Built-in hooks for automatic store resets on unmount.
+- ⚡ **High Performance:** Subscription-free hooks available (`useDynamicStoreMethods`) to read and update state without component re-renders.
 - 🔄 **Functional Updaters:** Handles race conditions naturally with `setData(prev => ...)`.
-- 🛡️ **Fully Typed:** Inferred TypeScript definitions out of the box with strict mode support.
+- 🛡️ **100% Type-safe:** Written in TypeScript with pristine type inference and autocomplete out of the box.
 - 🪶 **Tiny Footprint:** Minimal addition to your bundle size.
+
+---
+
+## ❓ Motivation
+
+Modern frontend applications often suffer from state management boilerplate and bloated global stores. Setting up stores usually requires defining schemas upfront, creating actions, and wiring things together.
+
+The main motivation behind this package is to **drastically reduce boilerplate and simplify store management for maximum efficiency**.
+
+Whether you need to generate stores dynamically on the fly or just want the simplicity of `useState` with the power of a scalable global store, this API delivers a seamless, hassle-free experience.
 
 ---
 
 ## Table of Contents
 
-- [Features](#features)
+- [⚡ Features](#-features)
+- [❓ Motivation](#-motivation)
 - [Overview](#overview)
 - [Installation](#installation)
-- [API 1 — `createDynamicStore`](#api-1--createdynamicstore)
+- [`useDynamicStore`](#usedynamicstore)
   - [Quick Start](#quick-start)
-  - [Outside React](#outside-react)
-  - [TypeScript](#typescript)
-- [API 2 — `useDynamicStore`](#api-2--usedynamicstore)
-  - [Quick Start](#quick-start-1)
   - [Functional updater (`setData`)](#functional-updater-setdata)
-  - [Auto-cleanup with `useDynamicStoreWithCleanup`](#auto-cleanup-with-usedynamicstorewithcleanup)
-  - [Imperative helpers (outside React)](#imperative-helpers-outside-react)
-  - [Config options](#config-options)
-  - [TypeScript](#typescript-1)
-- [When to use which API](#when-to-use-which-api)
+  - [Examples](#examples)
+- [`useDynamicStoreWithCleanup`](#usedynamicstorewithcleanup)
+- [`useDynamicStoreMethods` (No Subscription)](#usedynamicstoremethods-no-subscription)
+- [Imperative helpers (outside React)](#imperative-helpers-outside-react)
+- [Config options](#config-options)
+- [TypeScript](#typescript)
 - [Full API Reference](#full-api-reference)
 - [Contributing](#contributing)
 - [License](#license)
@@ -61,17 +70,15 @@
 
 ## Overview
 
-The package ships **two independent APIs** that can be used separately or together:
+`@pitboxdev/dynamic-store-zustand` provides dynamic store management for React applications. It is built on top of [Zustand](https://github.com/pmndrs/zustand) and exposes a hook API that feels exactly like React's `useState`, with the addition that stores are stored globally in a single shared registry keyed by a string `storeId`.
 
-| | `createDynamicStore` | `useDynamicStore` |
-|---|---|---|
-| Style | Factory function | React hook |
-| Stores | One Zustand store per call | All stores live in a single registry |
-| Actions | Explicit, typed | Implicit via `setData` |
-| Functional updater | Via `set((s) => …)` in actions | Built-in `setData((prev) => …)` |
-| Auto-cleanup | — | `useDynamicStoreWithCleanup` |
-| Navigation persistence | — | `persistOnNavigation` config flag |
-| Best for | Permanent, feature-level stores | Page/form/modal scoped state |
+| Feature | Description |
+|---|---|
+| **Dynamic initialization** | Stores are initialized just-in-time when the hook mounts |
+| **useState-like API** | `setData(obj)` or `setData((prev) => update)` |
+| **Auto-cleanup** | `useDynamicStoreWithCleanup` resets state on unmount |
+| **Navigation reset** | Non-persistent stores reset via imperative API on route changes |
+| **Imperative helpers** | Modify and reset stores outside React components |
 
 ---
 
@@ -89,99 +96,7 @@ pnpm add @pitboxdev/dynamic-store-zustand zustand
 
 ---
 
-## API 1 — `createDynamicStore`
-
-A factory function that creates a standalone, fully typed Zustand store from a configuration object with explicit actions.
-
-### Quick Start
-
-```tsx
-import { createDynamicStore } from "@pitboxdev/dynamic-store-zustand";
-
-const { useStore } = createDynamicStore({
-  initialState: { count: 0 },
-  actions: (set) => ({
-    increment: () => set((s) => ({ count: s.count + 1 })),
-    decrement: () => set((s) => ({ count: s.count - 1 })),
-    reset: () => set({ count: 0 }),
-  }),
-});
-
-function Counter() {
-  const count = useStore((s) => s.count);
-  const { increment, decrement, reset } = useStore();
-
-  return (
-    <div>
-      <button onClick={decrement}>-</button>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-      <button onClick={reset}>Reset</button>
-    </div>
-  );
-}
-```
-
-### Outside React
-
-```ts
-const { store } = createDynamicStore({ initialState: { count: 0 }, actions: (set) => ({
-  increment: () => set((s) => ({ count: s.count + 1 })),
-}) });
-
-// Read
-const count = store.getState().count;
-
-// Write
-store.setState({ count: 42 });
-
-// Subscribe
-const unsub = store.subscribe((state) => console.log(state.count));
-unsub();
-```
-
-### TypeScript
-
-All types are inferred automatically. You can also define them explicitly:
-
-```ts
-import {
-  createDynamicStore,
-  type DynamicStoreConfig,
-} from "@pitboxdev/dynamic-store-zustand";
-
-interface CounterState { count: number }
-interface CounterActions {
-  increment: () => void;
-  decrement: () => void;
-  reset: () => void;
-}
-
-const config: DynamicStoreConfig<CounterState, CounterActions> = {
-  initialState: { count: 0 },
-  actions: (set) => ({
-    increment: () => set((s) => ({ count: s.count + 1 })),
-    decrement: () => set((s) => ({ count: s.count - 1 })),
-    reset: () => set({ count: 0 }),
-  }),
-};
-
-const { useStore, store } = createDynamicStore(config);
-```
-
-Using multiple selectors with shallow equality:
-
-```ts
-import { useShallow } from "zustand/react/shallow";
-
-const { count, increment } = useStore(
-  useShallow((s) => ({ count: s.count, increment: s.increment }))
-);
-```
-
----
-
-## API 2 — `useDynamicStore`
+## `useDynamicStore`
 
 A hook that stores state in a single shared registry keyed by a string `storeId`. `setData` works exactly like React's `useState` setter — it accepts either a partial object or a function that receives the previous state.
 
@@ -249,6 +164,8 @@ setData((prev) => ({ value: prev.value + 1 }));
 ```
 
 Always prefer the functional form when the new state depends on the old state.
+
+### Examples
 
 #### Todo list example
 
@@ -320,7 +237,9 @@ function Cart() {
 }
 ```
 
-### Auto-cleanup with `useDynamicStoreWithCleanup`
+---
+
+## `useDynamicStoreWithCleanup`
 
 `useDynamicStoreWithCleanup` works identically to `useDynamicStore` but resets the store when the component unmounts — useful for modal dialogs, wizard steps, or edit forms.
 
@@ -337,7 +256,41 @@ function EditModal() {
 }
 ```
 
-### Imperative helpers (outside React)
+---
+
+## `useDynamicStoreMethods` (No Subscription)
+
+If you need to update or read the store **without subscribing to its changes** (to avoid component re-renders), you can use `useDynamicStoreMethods`:
+
+```tsx
+import { useDynamicStoreMethods } from "@pitboxdev/dynamic-store-zustand";
+
+function Controls() {
+  // This component will NOT re-render when 'counter' state changes!
+  const { setData, reset, get } = useDynamicStoreMethods<CounterState>("counter");
+
+  const increment = () => {
+    // Both forms work just like in the regular hook:
+    setData((prev) => ({ value: prev.value + 1 }));
+  };
+
+  const logCurrent = () => {
+    console.log("Current state:", get()); // Get current state without subscribing
+  };
+
+  return (
+    <div>
+      <button onClick={increment}>Increment</button>
+      <button onClick={logCurrent}>Log State</button>
+      <button onClick={reset}>Reset</button>
+    </div>
+  );
+}
+```
+
+---
+
+## Imperative helpers (outside React)
 
 All helpers call into the shared manager directly — no hook required.
 
@@ -362,7 +315,9 @@ resetAllDynamicStores();
 resetNonPersistentDynamicStores();
 ```
 
-### Config options
+---
+
+## Config options
 
 | Option | Type | Default | Description |
 |---|---|---|---|
@@ -370,7 +325,9 @@ resetNonPersistentDynamicStores();
 | `persistOnNavigation` | `boolean` | `false` | Skip reset when `resetNonPersistentDynamicStores()` is called |
 | `resetOnUnmount` | `boolean` | `false` | Auto-reset when the component unmounts (`useDynamicStoreWithCleanup` only) |
 
-### TypeScript
+---
+
+## TypeScript
 
 ```ts
 import {
@@ -413,55 +370,7 @@ function RegistrationForm() {
 
 ---
 
-## When to use which API
-
-### Use `createDynamicStore` when you need:
-
-- A **permanent, feature-level store** (auth, theme, user profile, global UI)
-- **Explicit, named actions** that encapsulate business logic
-- **Fine-grained selectors** and subscriptions outside React
-- The full Zustand API (middleware, persist, devtools, subscribe)
-
-```ts
-// auth.store.ts
-export const { useStore: useAuthStore, store: authStore } = createDynamicStore({
-  initialState: { user: null as User | null, token: "" },
-  actions: (set) => ({
-    login: (user: User, token: string) => set({ user, token }),
-    logout: () => set({ user: null, token: "" }),
-  }),
-});
-```
-
-### Use `useDynamicStore` when you need:
-
-- **Page / route / modal scoped state** with optional auto-cleanup
-- **useState-like ergonomics** without boilerplate action definitions
-- **Multiple stores** managed centrally with shared reset helpers
-- Quick iteration when action interfaces aren't stable yet
-
-```tsx
-// Inside a wizard step component
-const { data, setData } = useDynamicStoreWithCleanup<StepState>(
-  "wizard-step-2",
-  { initialState: { selection: null }, resetOnUnmount: true }
-);
-```
-
----
-
 ## Full API Reference
-
-### `createDynamicStore(config)`
-
-| Parameter | Type | Description |
-|---|---|---|
-| `config.initialState` | `TState` | Plain object representing the initial state |
-| `config.actions` | `(set, get) => TActions` | Factory that returns named action implementations |
-
-Returns `{ useStore, store }`.
-
----
 
 ### `useDynamicStore<T>(storeId, config?)`
 
@@ -480,11 +389,18 @@ Same signature as `useDynamicStore`. Calls `reset()` on component unmount when `
 
 ---
 
+### `useDynamicStoreMethods<T>(storeId, config?)`
+
+Returns `{ setData, reset, get }` bound to the store, without subscribing the component to state changes.
+
+---
+
 ### Imperative helpers
 
 | Function | Signature | Description |
 |---|---|---|
 | `updateDynamicStore` | `(storeId, data) => void` | Merge data into a store from outside React |
+| `getDynamicStoreData` | `(storeId) => T \| undefined` | Retrieve a store's current state from outside React |
 | `resetDynamicStore` | `(storeId) => void` | Reset one store to its `initialState` |
 | `resetAllDynamicStores` | `() => void` | Reset every registered store |
 | `resetNonPersistentDynamicStores` | `() => void` | Reset stores where `persistOnNavigation` is not `true` |
@@ -496,14 +412,11 @@ Same signature as `useDynamicStore`. Calls `reset()` on component unmount when `
 | Type | Description |
 |---|---|
 | `StoreState` | `Record<string, unknown>` — base constraint for state objects |
-| `StoreActions` | `Record<string, (...args) => unknown>` — base constraint for action maps |
-| `DynamicStoreConfig<TState, TActions>` | Config type for `createDynamicStore` |
-| `DynamicStore<TState, TActions>` | Return type of `createDynamicStore` |
-| `StoreSlice<TState, TActions>` | Merged state + actions type |
 | `StoreConfig<T>` | Config type for `useDynamicStore` |
 | `SetStateAction<T>` | `Partial<T> \| ((prev: T) => Partial<T>)` — setter argument type |
 | `DynamicStoreRegistry` | Internal registry entry (advanced use) |
 | `UseDynamicStoreReturn<T>` | Return type of `useDynamicStore` |
+| `UseDynamicStoreMethodsReturn<T>` | Return type of `useDynamicStoreMethods` |
 
 ---
 

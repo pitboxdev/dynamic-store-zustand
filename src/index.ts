@@ -1,23 +1,17 @@
-// ─── createDynamicStore API ───────────────────────────────────────────────────
-export { createDynamicStore } from "./createDynamicStore";
-export type {
-  DynamicStore,
-  DynamicStoreConfig,
-  StoreActions,
-  StoreSlice,
-  StoreState,
-} from "./types";
-
-// ─── useDynamicStore API ──────────────────────────────────────────────────────
 export {
   useDynamicStore,
   useDynamicStoreWithCleanup,
+  useDynamicStoreMethods,
   updateDynamicStore,
+  getDynamicStoreData,
   resetDynamicStore,
   resetAllDynamicStores,
   resetNonPersistentDynamicStores,
 } from "./dynamicStore";
-export type { UseDynamicStoreReturn } from "./dynamicStore";
+export type {
+  UseDynamicStoreReturn,
+  UseDynamicStoreMethodsReturn,
+} from "./dynamicStore";
 export type {
   SetStateAction,
   StoreConfig,

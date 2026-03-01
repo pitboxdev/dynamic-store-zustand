@@ -34,53 +34,8 @@ export interface DynamicStoreRegistry {
   initialState: StoreState;
 }
 
-// ─── createDynamicStore types ─────────────────────────────────────────────────
-
-
 /**
  * A plain object that can serve as store state.
  * Keys are strings, values can be anything.
  */
 export type StoreState = Record<string, unknown>;
-
-/**
- * Actions are functions attached to the store.
- */
-export type StoreActions = Record<string, (...args: unknown[]) => unknown>;
-
-/**
- * Full store slice = state + actions.
- */
-export type StoreSlice<
-  TState extends StoreState = StoreState,
-  TActions extends StoreActions = StoreActions,
-> = TState & TActions;
-
-/**
- * Configuration object passed to createDynamicStore.
- */
-export interface DynamicStoreConfig<
-  TState extends StoreState,
-  TActions extends StoreActions,
-> {
-  /** Initial state values */
-  initialState: TState;
-  /** Factory that receives `set` and `get` and returns action implementations */
-  actions: (
-    set: StoreApi<StoreSlice<TState, TActions>>["setState"],
-    get: StoreApi<StoreSlice<TState, TActions>>["getState"],
-  ) => TActions;
-}
-
-/**
- * The return type of createDynamicStore.
- */
-export interface DynamicStore<
-  TState extends StoreState,
-  TActions extends StoreActions,
-> {
-  /** Zustand React hook */
-  useStore: UseBoundStore<StoreApi<StoreSlice<TState, TActions>>>;
-  /** Direct access to the underlying Zustand store API */
-  store: StoreApi<StoreSlice<TState, TActions>>;
-}
