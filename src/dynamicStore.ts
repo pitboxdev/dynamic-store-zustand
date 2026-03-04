@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { useEffect } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
 import type {
   SetStateAction,
   StoreConfig,
@@ -120,33 +120,44 @@ export function useDynamicStoreMethods<T extends StoreState>(
   const setStoreData = useDynamicStoresManager((state) => state.setStoreData);
   const resetStore = useDynamicStoresManager((state) => state.resetStore);
 
-  const getData = (): T => {
+  // Use ref for config to keep methods stable even if config object is unstable
+  const configRef = useRef(config);
+  configRef.current = config;
+
+  const getData = useCallback((): T => {
     const storeRegistry = useDynamicStoresManager.getState().stores[storeId];
-    return (storeRegistry?.data ?? config?.initialState ?? {}) as T;
-  };
+    return (storeRegistry?.data ?? configRef.current?.initialState ?? {}) as T;
+  }, [storeId]);
 
-  const setData = (updater: SetStateAction<T>): void => {
-    if (typeof updater === "function") {
-      const updates = updater(getData());
-      setStoreData(
-        storeId,
-        updates as StoreState,
-        config as StoreConfig | undefined,
-      );
-    } else {
-      setStoreData(
-        storeId,
-        updater as StoreState,
-        config as StoreConfig | undefined,
-      );
-    }
-  };
+  const setData = useCallback(
+    (updater: SetStateAction<T>): void => {
+      const currentConfig = configRef.current;
+      if (typeof updater === "function") {
+        const updates = updater(getData());
+        setStoreData(
+          storeId,
+          updates as StoreState,
+          currentConfig as StoreConfig | undefined,
+        );
+      } else {
+        setStoreData(
+          storeId,
+          updater as StoreState,
+          currentConfig as StoreConfig | undefined,
+        );
+      }
+    },
+    [getData, setStoreData, storeId],
+  );
 
-  const reset = (): void => {
+  const reset = useCallback((): void => {
     resetStore(storeId);
-  };
+  }, [resetStore, storeId]);
 
-  return { setData, reset, getData };
+  return useMemo(
+    () => ({ setData, reset, getData }),
+    [setData, reset, getData],
+  );
 }
 
 // ─── useDynamicStore ──────────────────────────────────────────────────────────
@@ -175,8 +186,13 @@ export function useDynamicStore<T extends StoreState>(
   storeId: string,
   config?: StoreConfig<T>,
 ): UseDynamicStoreReturn<T> {
-  const storeRegistry = useDynamicStoresManager((state) => state.stores[storeId]);
-  const methods = useDynamicStoreMethods<T>(storeId, config);
+  const storeRegistry = useDynamicStoresManager(
+    (state) => state.stores[storeId],
+  );
+  const { setData, reset, getData } = useDynamicStoreMethods<T>(
+    storeId,
+    config,
+  );
 
   // Initialize the store entry on first use
   useEffect(() => {
@@ -195,20 +211,23 @@ export function useDynamicStore<T extends StoreState>(
   useEffect(() => {
     return () => {
       if (config?.resetOnUnmount === true) {
-        methods.reset();
+        reset();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId, config?.resetOnUnmount]);
+  }, [storeId, config?.resetOnUnmount, reset]);
 
   const data = (storeRegistry?.data ?? config?.initialState ?? {}) as T;
 
-  return {
-    data,
-    setData: methods.setData,
-    reset: methods.reset,
-    getData: methods.getData,
-  };
+  return useMemo(
+    () => ({
+      data,
+      setData,
+      reset,
+      getData,
+    }),
+    [data, setData, reset, getData],
+  );
 }
 
 // ─── Imperative helpers (outside React) ──────────────────────────────────────
