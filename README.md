@@ -53,6 +53,7 @@ Whether you need to generate stores dynamically on the fly or just want the simp
 - [⚡ Features](#-features)
 - [❓ Motivation](#-motivation)
 - [Overview](#overview)
+- [🚀 Live Examples](#-live-examples)
 - [Installation](#installation)
 - [`useDynamicStore`](#usedynamicstore)
   - [Quick Start](#quick-start)
@@ -80,6 +81,12 @@ Whether you need to generate stores dynamically on the fly or just want the simp
 | **Auto-cleanup**           | `resetOnUnmount: true` resets state on unmount                  |
 | **Navigation reset**       | Non-persistent stores reset via imperative API on route changes |
 | **Imperative helpers**     | Modify and reset stores outside React components                |
+
+---
+
+## 🚀 Live Examples
+
+- **[Basic Demo (CodeSandbox)](https://codesandbox.io/s/github/pitboxdev/dynamic-store-zustand/tree/main/examples/basic)** – A comprehensive example featuring theme toggling, cross-branch state updates, and performance optimizations using selectors.
 
 ---
 
