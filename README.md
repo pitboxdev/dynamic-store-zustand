@@ -33,6 +33,7 @@
 - ⚡ **High Performance:** Subscription-free hooks available (`useDynamicStoreMethods`) to read and update state without component re-renders.
 - 🔄 **Functional Updaters:** Handles race conditions naturally with `setData(prev => ...)`.
 - 🛡️ **100% Type-safe:** Written in TypeScript with pristine type inference and autocomplete out of the box.
+- 🚀 **Performance Optimized:** Internal `shallow` comparison prevents unnecessary re-renders when using selectors or initializing stores.
 - 🪶 **Tiny Footprint:** Minimal addition to your bundle size.
 
 ---
@@ -63,6 +64,7 @@ Whether you need to generate stores dynamically on the fly or just want the simp
 - [TypeScript](#typescript)
 - [Full API Reference](#full-api-reference)
 - [Contributing](#contributing)
+- [🛠️ Professional Services](#️-professional-services)
 - [License](#license)
 
 ---
@@ -71,13 +73,13 @@ Whether you need to generate stores dynamically on the fly or just want the simp
 
 `@pitboxdev/dynamic-store-zustand` provides dynamic store management for React applications. It is built on top of [Zustand](https://github.com/pmndrs/zustand) and exposes a hook API that feels exactly like React's `useState`, with the addition that stores are stored globally in a single shared registry keyed by a string `storeId`.
 
-| Feature | Description |
-|---|---|
-| **Dynamic initialization** | Stores are initialized just-in-time when the hook mounts |
-| **useState-like API** | `setData(obj)` or `setData((prev) => update)` |
-| **Auto-cleanup** | `resetOnUnmount: true` resets state on unmount |
-| **Navigation reset** | Non-persistent stores reset via imperative API on route changes |
-| **Imperative helpers** | Modify and reset stores outside React components |
+| Feature                    | Description                                                     |
+| -------------------------- | --------------------------------------------------------------- |
+| **Dynamic initialization** | Stores are initialized just-in-time when the hook mounts        |
+| **useState-like API**      | `setData(obj)` or `setData((prev) => update)`                   |
+| **Auto-cleanup**           | `resetOnUnmount: true` resets state on unmount                  |
+| **Navigation reset**       | Non-persistent stores reset via imperative API on route changes |
+| **Imperative helpers**     | Modify and reset stores outside React components                |
 
 ---
 
@@ -112,9 +114,12 @@ interface CounterState {
 const initial: CounterState = { value: 0, step: 1 };
 
 function Counter() {
-  const { data, setData, reset, getData } = useDynamicStore<CounterState>("counter", {
-    initialState: initial,
-  });
+  const { data, setData, reset, getData } = useDynamicStore<CounterState>(
+    "counter",
+    {
+      initialState: initial,
+    },
+  );
 
   return (
     <div>
@@ -126,7 +131,9 @@ function Counter() {
       </button>
 
       {/* Functional update — always reads the latest state */}
-      <button onClick={() => setData((prev) => ({ value: prev.value + prev.step }))}>
+      <button
+        onClick={() => setData((prev) => ({ value: prev.value + prev.step }))}
+      >
         + (functional)
       </button>
 
@@ -164,13 +171,32 @@ setData((prev) => ({ value: prev.value + 1 }));
 
 Always prefer the functional form when the new state depends on the old state.
 
+### Using Selectors for Performance
+
+By default, a component reading `data` relies on the full object update. To avoid unnecessary re-renders when only a specific part of a store changes, you can pass an optional selector as the third argument.
+
+`@pitboxdev/dynamic-store-zustand` automatically applies **shallow comparison** to the selector's result, so the component only re-renders if the selected data actually changes:
+
+```tsx
+// This component will ONLY re-render when `user.name` changes,
+// even if `user.score` or other fields are updated.
+const { data: name } = useDynamicStore("user", config, (state) => state.name);
+```
+
 ### Examples
 
 #### Todo list example
 
 ```tsx
-interface Todo { id: string; text: string; done: boolean }
-interface TodosState { items: Todo[]; filter: "all" | "active" | "done" }
+interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+}
+interface TodosState {
+  items: Todo[];
+  filter: "all" | "active" | "done";
+}
 
 function TodoList() {
   const { data, setData } = useDynamicStore<TodosState>("todos", {
@@ -185,9 +211,7 @@ function TodoList() {
 
   const toggle = (id: string) => {
     setData((prev) => ({
-      items: prev.items.map((t) =>
-        t.id === id ? { ...t, done: !t.done } : t
-      ),
+      items: prev.items.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
     }));
   };
 
@@ -205,8 +229,16 @@ function TodoList() {
 #### Shopping cart example
 
 ```tsx
-interface CartItem { id: string; name: string; price: number; quantity: number }
-interface CartState { items: CartItem[]; discount: number }
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+interface CartState {
+  items: CartItem[];
+  discount: number;
+}
 
 function Cart() {
   const { data, setData } = useDynamicStore<CartState>("cart", {
@@ -220,17 +252,16 @@ function Cart() {
       return {
         items: exists
           ? prev.items.map((i) =>
-              i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+              i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i,
             )
           : [...prev.items, { ...product, quantity: 1 }],
       };
     });
   };
 
-  const total = data.items.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  ) * (1 - data.discount / 100);
+  const total =
+    data.items.reduce((sum, i) => sum + i.price * i.quantity, 0) *
+    (1 - data.discount / 100);
 
   // ...
 }
@@ -247,7 +278,8 @@ import { useDynamicStoreMethods } from "@pitboxdev/dynamic-store-zustand";
 
 function Controls() {
   // This component will NOT re-render when 'counter' state changes!
-  const { setData, reset, getData } = useDynamicStoreMethods<CounterState>("counter");
+  const { setData, reset, getData } =
+    useDynamicStoreMethods<CounterState>("counter");
 
   const increment = () => {
     // Both forms work just like in the regular hook:
@@ -299,11 +331,11 @@ resetNonPersistentDynamicStores();
 
 ## Config options
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `initialState` | `T` | `{}` | Initial values; also used when `reset()` is called |
-| `persistOnNavigation` | `boolean` | `false` | Skip reset when `resetNonPersistentDynamicStores()` is called |
-| `resetOnUnmount` | `boolean` | `false` | Auto-reset when the component unmounts (`useDynamicStoreWithCleanup` only) |
+| Option                | Type      | Default | Description                                                                |
+| --------------------- | --------- | ------- | -------------------------------------------------------------------------- |
+| `initialState`        | `T`       | `{}`    | Initial values; also used when `reset()` is called                         |
+| `persistOnNavigation` | `boolean` | `false` | Skip reset when `resetNonPersistentDynamicStores()` is called              |
+| `resetOnUnmount`      | `boolean` | `false` | Auto-reset when the component unmounts (`useDynamicStoreWithCleanup` only) |
 
 ---
 
@@ -352,12 +384,13 @@ function RegistrationForm() {
 
 ## Full API Reference
 
-### `useDynamicStore<T>(storeId, config?)`
+### `useDynamicStore<T, U = T>(storeId, config?, selector?)`
 
-| Parameter | Type | Description |
-|---|---|---|
-| `storeId` | `string` | Unique key identifying this store in the registry |
-| `config` | `StoreConfig<T>` | Optional config (see [Config options](#config-options)) |
+| Parameter  | Type              | Description                                                                               |
+| ---------- | ----------------- | ----------------------------------------------------------------------------------------- |
+| `storeId`  | `string`          | Unique key identifying this store in the registry                                         |
+| `config`   | `StoreConfig<T>`  | Optional config (see [Config options](#config-options))                                   |
+| `selector` | `(state: T) => U` | Optional function to subscribe to a specific sub-state and prevent unnecessary re-renders |
 
 Returns `{ data: T, setData, reset, getData }`.
 
@@ -371,32 +404,44 @@ Returns `{ setData, reset, getData }` bound to the store, without subscribing th
 
 ### Imperative helpers
 
-| Function | Signature | Description |
-|---|---|---|
-| `updateDynamicStore` | `(storeId, data) => void` | Merge data into a store from outside React |
-| `getDynamicStoreData` | `(storeId) => T \| undefined` | Retrieve a store's current state from outside React |
-| `resetDynamicStore` | `(storeId) => void` | Reset one store to its `initialState` |
-| `resetAllDynamicStores` | `() => void` | Reset every registered store |
-| `resetNonPersistentDynamicStores` | `() => void` | Reset stores where `persistOnNavigation` is not `true` |
+| Function                          | Signature                     | Description                                            |
+| --------------------------------- | ----------------------------- | ------------------------------------------------------ |
+| `updateDynamicStore`              | `(storeId, data) => void`     | Merge data into a store from outside React             |
+| `getDynamicStoreData`             | `(storeId) => T \| undefined` | Retrieve a store's current state from outside React    |
+| `resetDynamicStore`               | `(storeId) => void`           | Reset one store to its `initialState`                  |
+| `resetAllDynamicStores`           | `() => void`                  | Reset every registered store                           |
+| `resetNonPersistentDynamicStores` | `() => void`                  | Reset stores where `persistOnNavigation` is not `true` |
 
 ---
 
 ### Exported types
 
-| Type | Description |
-|---|---|
-| `StoreState` | `Record<string, unknown>` — base constraint for state objects |
-| `StoreConfig<T>` | Config type for `useDynamicStore` |
-| `SetStateAction<T>` | `Partial<T> \| ((prev: T) => Partial<T>)` — setter argument type |
-| `DynamicStoreRegistry` | Internal registry entry (advanced use) |
-| `UseDynamicStoreReturn<T>` | Return type of `useDynamicStore` |
-| `UseDynamicStoreMethodsReturn<T>` | Return type of `useDynamicStoreMethods` |
+| Type                              | Description                                                      |
+| --------------------------------- | ---------------------------------------------------------------- |
+| `StoreState`                      | `Record<string, unknown>` — base constraint for state objects    |
+| `StoreConfig<T>`                  | Config type for `useDynamicStore`                                |
+| `SetStateAction<T>`               | `Partial<T> \| ((prev: T) => Partial<T>)` — setter argument type |
+| `DynamicStoreRegistry`            | Internal registry entry (advanced use)                           |
+| `UseDynamicStoreReturn<T>`        | Return type of `useDynamicStore`                                 |
+| `UseDynamicStoreMethodsReturn<T>` | Return type of `useDynamicStoreMethods`                          |
 
 ---
 
 ## Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/pitboxdev/dynamic-store-zustand/issues).
+
+---
+
+## 🛠️ Professional Services
+
+Need help with your React/Zustand state architecture? Whether you're looking to integrate this library into a large-scale application, build a complex project from scratch, or require specific feature development, I'm available for hands-on technical collaboration.
+
+- 🏗️ **Custom Project Development:** Building complex React/TypeScript applications from the ground up with scalable architecture.
+- ⚙️ **Integration & Migration:** Seamlessly implementing `@pitboxdev/dynamic-store-zustand` into your existing codebase or migrating legacy state solutions.
+- 🛠️ **Feature Development:** Implementing tailored features, refactoring state logic, and optimizing performance for your specific needs.
+
+Contact me: [kiselevm2015@gmail.com](mailto:kiselevm2015@gmail.com)
 
 ---
 
