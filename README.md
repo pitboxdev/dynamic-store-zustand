@@ -61,6 +61,7 @@ Whether you need to generate stores dynamically on the fly or just want the simp
   - [Examples](#examples)
 - [`useDynamicStoreMethods` (No Subscription)](#usedynamicstoremethods-no-subscription)
 - [Imperative helpers (outside React)](#imperative-helpers-outside-react)
+- [Navigation reset](#navigation-reset)
 - [Config options](#config-options)
 - [TypeScript](#typescript)
 - [Full API Reference](#full-api-reference)
@@ -332,6 +333,54 @@ resetAllDynamicStores();
 
 // Reset only stores without persistOnNavigation: true (e.g. on route change)
 resetNonPersistentDynamicStores();
+```
+
+---
+
+## Navigation reset
+
+Non-persistent stores (where `persistOnNavigation` is `false` or omitted) should be reset manually when your application navigates (e.g., on route changes).
+
+### 🛠️ Manual Integration
+
+Since Zustand doesn't use a global action middleware, you need to trigger the reset manually in your navigation logic or a root layout component.
+
+#### React Router Example
+
+```tsx
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { resetNonPersistentDynamicStores } from "@pitboxdev/dynamic-store-zustand";
+
+function App() {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Trigger cleanup of non-persistent stores
+    resetNonPersistentDynamicStores();
+  }, [location.pathname]);
+
+  return <Routes>...</Routes>;
+}
+```
+
+#### Next.js (App Router)
+
+```tsx
+"use client";
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { resetNonPersistentDynamicStores } from "@pitboxdev/dynamic-store-zustand";
+
+export default function RootLayout({ children }) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    resetNonPersistentDynamicStores();
+  }, [pathname]);
+
+  return <>{children}</>;
+}
 ```
 
 ---
