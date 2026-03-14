@@ -22,17 +22,16 @@
 
 ## 🚀 Live Demo
 
-- **[CodeSandbox Example](https://codesandbox.io/s/github/pitboxdev/dynamic-store-zustand/tree/main/examples/basic)** – See it in action: Theme toggling, cross-branch state updates, and complex reset scenarios.
+- **[Basic Demo](https://codesandbox.io/s/github/pitboxdev/dynamic-store-zustand/tree/main/examples/basic)** – Theme toggling, cross-branch state updates, and complex reset scenarios.
 
 ---
 
-## ⚡ Features
+## ⚡ Simplicity First
 
-- 🛠️ **DX First:** Zero boilerplate. API mirrors `useState` ergonomics.
-- 🧹 **Auto-Cleanup:** Optional store resets on navigation (with exclusions) or unmount.
-- 🚀 **High Performance:** Internal shallow comparison prevents unnecessary re-renders.
-- 🛡️ **100% Type-safe:** Written in TypeScript with pristine inference.
-- 🪶 **Tiny:** Minimal footprint on top of your existing Zustand setup.
+```tsx
+const { data, setData } = useDynamicStore('user', { initialState });
+```
+**That's it.** No stores to define, no boilerplate. Just `useState` ergonomics with the full power of Zustand.
 
 ---
 
@@ -97,7 +96,7 @@ function Profile() {
 
 ## 🧹 Cleanup & Navigation
 
-By default, all dynamic stores are **reset automatically** when route change is triggered via `resetDynamicStores`.
+By default, dynamic stores are persistent. You can trigger cleanup manually when the route changes or when a component unmounts.
 
 ### Config Options
 
@@ -138,6 +137,25 @@ resetDynamicStores(["checkout"]);
 resetDynamicStores("all", { excludeGroups: ["user-settings", "theme"] });
 ```
 
+#### ⚓ Router Integration
+
+To trigger cleanup **only on transitions** (skipping the first render), use a ref guard:
+
+```tsx
+const isFirstRender = useRef(true);
+
+useEffect(() => {
+  if (isFirstRender.current) {
+    isFirstRender.current = false;
+    return;
+  }
+  resetDynamicStores("non-persistent");
+}, [location.pathname]);
+```
+
+
+
+
 ---
 
 ## 🛠️ Advanced Features
@@ -156,19 +174,6 @@ Use `useDynamicStoreMethods` to get setters and getters without subscribing to s
 const { setData, getData } = useDynamicStoreMethods<UserState>("user");
 ```
 
-### Outside React (Imperative)
-```ts
-import { 
-  updateDynamicStore, 
-  resetDynamicStore, 
-  resetDynamicStores,
-  getDynamicStoreData 
-} from "@pitboxdev/dynamic-store-zustand";
-
-updateDynamicStore("user", { name: "New Name" });
-resetDynamicStore("user");
-const currentUser = getDynamicStoreData<UserState>("user");
-```
 
 ---
 
