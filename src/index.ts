@@ -1,11 +1,11 @@
 export {
+  createDynamicStore,
   useDynamicStore,
   useDynamicStoreMethods,
   updateDynamicStore,
   getDynamicStoreData,
   resetDynamicStore,
-  resetAllDynamicStores,
-  resetNonPersistentDynamicStores,
+  resetDynamicStores,
 } from "./dynamicStore";
 export type {
   UseDynamicStoreReturn,
@@ -14,5 +14,8 @@ export type {
 export type {
   SetStateAction,
   StoreConfig,
+  ResetScope,
+  ResetOptions,
+  DynamicStoreConfig,
   DynamicStoreRegistry,
 } from "./types";

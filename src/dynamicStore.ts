@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { devtools } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { useEffect, useCallback, useMemo, useRef } from "react";
@@ -7,6 +7,9 @@ import type {
   StoreConfig,
   DynamicStoreRegistry,
   StoreState,
+  ResetScope,
+  ResetOptions,
+  DynamicStoreConfig,
 } from "./types";
 
 
@@ -21,78 +24,131 @@ interface DynamicStoresState {
     config?: StoreConfig,
   ) => void;
   resetStore: (storeId: string) => void;
-  resetAllStores: () => void;
-  resetNonPersistentStores: () => void;
+  resetDynamicStores: (scope: ResetScope, options?: ResetOptions) => void;
 }
 
-const useDynamicStoresManager = create<DynamicStoresState>()(
-  devtools(
-    (set) => ({
-      stores: {},
+let useDynamicStoresManager: UseBoundStore<StoreApi<DynamicStoresState>> | undefined;
 
-      setStoreData: (storeId, data, config) => {
-        set((state) => {
-          const existingStore = state.stores[storeId];
-          const currentData: StoreState =
-            existingStore?.data ?? config?.initialState ?? {};
+/**
+ * Creates and configures the global dynamic store manager.
+ */
+export function createDynamicStore(config: DynamicStoreConfig = {}) {
+  if (useDynamicStoresManager) {
+    return useDynamicStoresManager;
+  }
 
-          const entry: DynamicStoreRegistry = {
-            data: { ...currentData, ...data },
-            config: config ?? existingStore?.config ?? {},
-            initialState:
-              config?.initialState ?? existingStore?.initialState ?? {},
-          };
+  const { devTools = true, middlewares = [], initialState = {} } = config;
 
-          return {
-            stores: { ...state.stores, [storeId]: entry },
-          };
-        });
-      },
+  const managerCreator = (set: any) => ({
+    stores: initialState as Record<string, DynamicStoreRegistry>,
 
-      resetStore: (storeId) => {
-        set((state) => {
-          const store = state.stores[storeId];
-          if (!store) return state;
+    setStoreData: (storeId: string, data: StoreState, cfg?: StoreConfig) => {
+      set((state: DynamicStoresState) => {
+        const existingStore = state.stores[storeId];
+        const currentData: StoreState =
+          existingStore?.data ?? cfg?.initialState ?? {};
 
-          return {
-            stores: {
-              ...state.stores,
-              [storeId]: { ...store, data: { ...store.initialState } },
-            },
-          };
-        });
-      },
+        const entry: DynamicStoreRegistry = {
+          data: { ...currentData, ...data },
+          config: cfg ?? existingStore?.config ?? {},
+          initialState: cfg?.initialState ?? existingStore?.initialState ?? {},
+        };
 
-      resetAllStores: () => {
-        set((state) => {
-          const next: Record<string, DynamicStoreRegistry> = {};
+        return {
+          stores: { ...state.stores, [storeId]: entry },
+        };
+      });
+    },
 
-          for (const [id, store] of Object.entries(state.stores)) {
+    resetStore: (storeId: string) => {
+      set((state: DynamicStoresState) => {
+        const store = state.stores[storeId];
+        if (!store) return state;
+
+        return {
+          stores: {
+            ...state.stores,
+            [storeId]: { ...store, data: { ...store.initialState } },
+          },
+        };
+      });
+    },
+
+    resetDynamicStores: (scope: ResetScope, options?: ResetOptions) => {
+      set((state: DynamicStoresState) => {
+        const next: Record<string, DynamicStoreRegistry> = {};
+        const excludeGroups = options?.excludeGroups;
+
+        for (const [id, store] of Object.entries(state.stores)) {
+          const { persistOnNavigation, navigationGroups } = store.config || {};
+
+          // 0. Check exclusion
+          if (
+            excludeGroups &&
+            navigationGroups?.some((g) => excludeGroups.includes(g))
+          ) {
+            next[id] = store;
+            continue;
+          }
+
+          // 1. Reset everything
+          if (scope === "all") {
             next[id] = { ...store, data: { ...store.initialState } };
+            continue;
           }
 
-          return { stores: next };
-        });
-      },
-
-      resetNonPersistentStores: () => {
-        set((state) => {
-          const next: Record<string, DynamicStoreRegistry> = {};
-
-          for (const [id, store] of Object.entries(state.stores)) {
-            next[id] =
-              store.config.persistOnNavigation === true
-                ? store
-                : { ...store, data: { ...store.initialState } };
+          // 2. Explicit group reset
+          if (Array.isArray(scope)) {
+            const hasMatch = navigationGroups?.some((group) =>
+              scope.includes(group),
+            );
+            if (hasMatch) {
+              next[id] = { ...store, data: { ...store.initialState } };
+            } else {
+              next[id] = store;
+            }
+            continue;
           }
 
-          return { stores: next };
-        });
-      },
-    }),
-    { name: "DynamicStoresManager" },
-  ),
-);
+          // 3. Default non-persistent reset
+          next[id] =
+            persistOnNavigation === true
+              ? store
+              : { ...store, data: { ...store.initialState } };
+        }
+
+        return { stores: next };
+      });
+    },
+  });
+
+  // Apply devtools if enabled
+  let finalCreator = managerCreator;
+  if (devTools) {
+    finalCreator = devtools(managerCreator, {
+      name: "DynamicStoresManager",
+      ...(typeof devTools === "object" ? devTools : {}),
+    }) as any;
+  }
+
+  // Apply extra middlewares
+  middlewares.forEach((mw) => {
+    finalCreator = mw(finalCreator) as any;
+  });
+
+  useDynamicStoresManager = create<DynamicStoresState>()(finalCreator as any);
+  return useDynamicStoresManager;
+}
+
+/**
+ * Internal helper to ensure the manager has been initialized.
+ */
+function ensureManager() {
+  if (!useDynamicStoresManager) {
+    return createDynamicStore();
+  }
+  return useDynamicStoresManager;
+}
 
 // ─── Return types ─────────────────────────────────────────────────────────────
 
@@ -120,7 +176,8 @@ export function useDynamicStoreMethods<T extends StoreState>(
   storeId: string,
   config?: StoreConfig<T>,
 ): UseDynamicStoreMethodsReturn<T> {
-  const { setStoreData, resetStore } = useDynamicStoresManager(
+  const manager = ensureManager();
+  const { setStoreData, resetStore } = manager(
     useShallow((state) => ({
       setStoreData: state.setStoreData,
       resetStore: state.resetStore,
@@ -132,7 +189,8 @@ export function useDynamicStoreMethods<T extends StoreState>(
   configRef.current = config;
 
   const getData = useCallback((): T => {
-    const storeRegistry = useDynamicStoresManager.getState().stores[storeId];
+    const manager = ensureManager();
+    const storeRegistry = manager.getState().stores[storeId];
     return (storeRegistry?.data ?? configRef.current?.initialState ?? {}) as T;
   }, [storeId]);
 
@@ -194,8 +252,9 @@ export function useDynamicStore<T extends StoreState, U = T>(
   config?: StoreConfig<T>,
   selector?: (state: T) => U,
 ): UseDynamicStoreReturn<T, U> {
-  const data = useDynamicStoresManager(
-    useShallow((state) => {
+  const manager = ensureManager();
+  const data = manager(
+    useShallow((state: DynamicStoresState) => {
       const registry = state.stores[storeId];
       const fullData = (registry?.data ?? config?.initialState ?? {}) as T;
       return selector ? selector(fullData) : (fullData as unknown as U);
@@ -209,7 +268,7 @@ export function useDynamicStore<T extends StoreState, U = T>(
 
   // Initialize the store entry on first use
   useEffect(() => {
-    const manager = useDynamicStoresManager.getState();
+    const manager = ensureManager().getState();
     const storeRegistry = manager.stores[storeId];
     // IMPORTANT: Only set data if it doesn't exist to avoid triggering an extra re-render on mount
     if (!storeRegistry && config?.initialState !== undefined) {
@@ -253,7 +312,7 @@ export const updateDynamicStore = (
   storeId: string,
   data: StoreState,
 ): void => {
-  useDynamicStoresManager.getState().setStoreData(storeId, data);
+  ensureManager().getState().setStoreData(storeId, data);
 };
 
 /**
@@ -263,26 +322,22 @@ export const updateDynamicStore = (
 export const getDynamicStoreData = <T extends StoreState = StoreState>(
   storeId: string,
 ): T | undefined => {
-  return useDynamicStoresManager.getState().stores[storeId]?.data as T | undefined;
+  return ensureManager().getState().stores[storeId]?.data as T | undefined;
 };
 
 /**
  * Reset a single dynamic store to its initial state from outside React.
  */
 export const resetDynamicStore = (storeId: string): void => {
-  useDynamicStoresManager.getState().resetStore(storeId);
+  ensureManager().getState().resetStore(storeId);
 };
 
 /**
- * Reset all dynamic stores to their initial states from outside React.
+ * Reset dynamic stores based on the provided scope from outside React.
  */
-export const resetAllDynamicStores = (): void => {
-  useDynamicStoresManager.getState().resetAllStores();
-};
-
-/**
- * Reset only stores that do not have `persistOnNavigation: true`.
- */
-export const resetNonPersistentDynamicStores = (): void => {
-  useDynamicStoresManager.getState().resetNonPersistentStores();
-};
+export function resetDynamicStores(
+  scope: ResetScope,
+  options?: ResetOptions,
+): void {
+  ensureManager().getState().resetDynamicStores(scope, options);
+}
